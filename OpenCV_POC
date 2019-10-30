@@ -1,0 +1,332 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# # Assignment Question 10, Group- BML30
+
+# ### Problem Statement: We had a 3 class of Images with 28*28 resolution. We were asked to build a model to classify the images using Gaussian Naive Bayes and Logistic Regression algorithms and report the results.
+
+# Imports for the assignments
+
+# In[1]:
+
+
+import cv2  # An open Computer vision library for reading and parsing the images
+import numpy as np  # A number Python library for data manupliation 
+import pandas as pd  # A library to manage the Dataframe and its operations
+import os  # A library to carry operations on system 
+from random import shuffle  # a library to shuffle the data
+import time  # A library to keep the time stamp
+from sklearn.naive_bayes import GaussianNB  # A library from Sklearn under Naive Bayes specifically Gaussian Naive Bayes
+from sklearn.linear_model import LogisticRegression # A library from Sklearn under Linear Model specifically Logistic Regression
+from sklearn.model_selection import train_test_split  # A library from Sklearn under model selection to split the data
+from matplotlib import pyplot as plt  # A library from matplotlib to plot the data in a 2D graph 
+from sklearn import metrics as mt   # A library from Sklearn to find the metrics of the model built
+
+from sklearn.decomposition import TruncatedSVD # A library from Sklearn under decomposition to reduce the Dimensions 
+from sklearn.pipeline import make_pipeline # A library from Sklearn under pipline to pipline the processes and the data feed.
+from sklearn.preprocessing import Normalizer # A library from Sklearn under Preprocessingto Normalize the data
+
+
+# Setting up the paths for the different images from different folders
+
+# In[2]:
+
+
+#folders and path
+shapes = ['circles','squares','triangles']
+path = "C:/Users/shivadhanush.b/Documents/BITS/Semester-2/Texts_Slides/ML/Assignment/basicshapes/shapes/"
+#Labels initiating to Zero
+circles, squares, triangles = 0,0,0
+
+
+# Loading the Images data to an list variable
+
+# In[3]:
+
+
+trainingdata = []
+for shape in shapes:
+    shapepath = path + shape
+    for files in os.listdir(shapepath):
+        exec(shape + " = 1")
+        imgpath = os.path.join(shapepath,files) # Set the path and image
+        image0 = cv2.imread(imgpath, 0) # Read B/W image
+        #image = cv2.imread(imgpath) # Read Colour Image
+        image = image0.reshape(image0.shape[0]*image0.shape[1]) #Reshaping image data matrix to n*m matrix
+        label = [str(circles),str(squares),str(triangles)] # Loading the Labels
+        trainingdata.append([np.array(image),label])# Adding each Image data to a list
+        #print(str(circles),str(squares),str(triangles))
+        exec(shape + " = 0")
+imagedata = trainingdata
+#shuffle(imagedata) # Suffling the records
+
+
+# Mapping the labels to the respective Image data
+
+# In[4]:
+
+
+# Label all the images with respective category. Implementation of 'Label Encoder'
+colCat = [None]*len(imagedata[:])
+colVal = [None]*len(imagedata[:])
+for i, d in enumerate(imagedata[:]):
+    for j in range(0,3):
+        if (str(j)=='0' and str(d[1][j])=='1'):
+            colCat[i] = 'circle'
+            colVal[i] = 0
+        if (str(j)=='1' and str(d[1][j])=='1'):
+            colCat[i] = 'square'
+            colVal[i] = 1
+        if (str(j)=='2' and str(d[1][j])=='1'):
+            colCat[i] = 'triangle'
+            colVal[i] = 2
+
+
+# In[5]:
+
+
+#Validate Label macthing with data
+#for i in range(10):
+#    print(str(imagedata[i][1]) + "=" +colCat[i] +"=" +str(colVal[i]))
+
+
+# loading the data to dataframe from pandas
+
+# In[6]:
+
+
+#Pass the array values from the images to the DataFrame
+dFrame = pd.DataFrame(imagedata[:], columns=['data','labels'])
+dFrame1 = pd.DataFrame.from_records(dFrame.data)
+dFrame1['categorylabels'] = colCat #pass the Categorical value by text class
+dFrame1['categoryvalues'] = colVal #pass the Categorical value by value class
+inputVariables = dFrame1.drop(['categorylabels','categoryvalues'], axis=1)
+target = dFrame1.categoryvalues
+print(dFrame1.shape) # Knowing the shape of the dataframe
+
+
+# In[7]:
+
+
+dFrame1.head(2) # Sample data
+
+
+# By the End of the above line of code we have Data Frame with the Intensity based Features
+
+# ##  1. Working on Intensity Based Features
+
+# ### 1.1 Training a Gaussian Naive Bayes Model with Intensity based features.
+
+# #####  Splitting the data to 70% (Training) and 30% (Testing) Data
+
+# In[8]:
+
+
+X_train, X_test, y_train, y_test = train_test_split(inputVariables, target, test_size = 30, random_state = 15)
+
+
+# In[9]:
+
+
+#Loading the model
+GNB = GaussianNB(var_smoothing=0.1)
+# Fitting the model with training data
+GNB.fit(X_train, y_train)
+
+
+# #### Predecting from the trained model
+
+# ######                    Training Accuracy
+
+# In[10]:
+
+
+trainResGNB = GNB.predict(X_train)
+trainResGNB_acc = mt.accuracy_score(trainResGNB,y_train) * 100
+print("Training Accuracy of the Gaussian Naive Bayes Model:", trainResGNB_acc )
+print( "The Confustion Matrix:")
+print(mt.confusion_matrix(trainResGNB,y_train))
+
+
+# ###### Testing Accuracy
+
+# In[11]:
+
+
+testResGNB = GNB.predict(X_test)
+testResGNB_acc = mt.accuracy_score(testResGNB,y_test) * 100
+print("Testing Accuracy of the Gaussian Naive Bayes Model:", testResGNB_acc )
+print( "The Confustion Matrix:")
+print(mt.confusion_matrix(testResGNB,y_test))
+
+
+# ### 1.2 Training a Logistic Regression Model with Intensity based features.
+
+# #####  Splitting the data to 70% (Training) and 30% (Testing) Data
+
+# In[12]:
+
+
+X_train, X_test, y_train, y_test = train_test_split(inputVariables, target, test_size = 30, random_state = 20)
+
+
+# In[13]:
+
+
+#Loading the model
+LR = LogisticRegression(penalty='l2', solver='saga', random_state=10, C=3, tol=0.04)
+# Fitting the model with training data
+LR.fit(X_train, y_train)
+
+
+# #### Predecting from the trained model
+
+# ######                    Training Accuracy
+
+# In[14]:
+
+
+trainResLR = LR.predict(X_train)
+trainResLR_acc = mt.accuracy_score(trainResLR,y_train) * 100
+print("Training Accuracy of the Logistic Regression Model:", trainResLR_acc )
+print( "The Confusion Matrix:")
+print(mt.confusion_matrix(trainResLR,y_train))
+
+
+# ###### Testing Accuracy
+
+# In[15]:
+
+
+testResLR = LR.predict(X_test)
+testResLR_acc = mt.accuracy_score(testResLR,y_test) * 100
+print("Testing Accuracy of the Logistic Regression Model:", testResLR_acc )
+print( "The Confustion Matrix:")
+print(mt.confusion_matrix(testResLR,y_test))
+
+
+# ##  2. Working on SVD Based Features
+
+# ##### Applying SVD to the Features
+
+# In[16]:
+
+
+svd = TruncatedSVD(280)
+normalizer = Normalizer(copy=False)
+lsa = make_pipeline(svd, normalizer)
+X = lsa.fit_transform(inputVariables)
+
+
+# ### 2.1 Training a Gaussian Naive Bayes Model with SVD based features.
+
+# #####  Splitting the data to 70% (Training) and 30% (Testing) Data
+
+# In[17]:
+
+
+X_train, X_test, y_train, y_test = train_test_split(X, target, test_size = 30, random_state = 30)
+
+
+# In[18]:
+
+
+#Loading the model
+GNBSVD = GaussianNB(var_smoothing=0.001)
+# Fitting the model with training data
+GNBSVD.fit(X_train, y_train)
+
+
+# #### Predecting from the trained model
+
+# ######                    Training Accuracy
+
+# In[19]:
+
+
+trainResGNBSVD = GNBSVD.predict(X_train)
+trainResGNBSVD_acc = mt.accuracy_score(trainResGNBSVD,y_train) * 100
+print("Training Accuracy of the Gaussian Naive Bayes Model: ", trainResGNBSVD_acc )
+print( "The Confustion Matrix:")
+print(mt.confusion_matrix(trainResGNBSVD,y_train))
+
+
+# ######                    Testing Accuracy
+
+# In[20]:
+
+
+testResGNBSVD = GNBSVD.predict(X_test)
+testResGNBSVD_acc = mt.accuracy_score(testResGNBSVD,y_test) * 100
+print("Testing Accuracy of the Gaussian Naive Bayes Model:", testResGNBSVD_acc )
+print( "The Confustion Matrix:")
+print(mt.confusion_matrix(testResGNBSVD,y_test))
+
+
+# ### 2.2 Training a Logistic Regression Model with SVD based features.
+
+# #####  Splitting the data to 70% (Training) and 30% (Testing) Data
+
+# In[21]:
+
+
+X_train, X_test, y_train, y_test = train_test_split(X, target, test_size = 30, random_state = 20)
+
+
+# In[22]:
+
+
+#Loading the model
+LRSVD = LogisticRegression(C=1.8, tol=0.0001)
+#LRSVD = LogisticRegression(penalty='l1', solver='saga', random_state=20, C=0.5, tol=0.000001)
+# Fitting the model with training data
+LRSVD.fit(X_train, y_train)
+
+
+# #### Predecting from the trained model
+
+# ######                    Training Accuracy
+
+# In[23]:
+
+
+trainResLRSVD = LRSVD.predict(X_train)
+trainResLRSVD_acc = mt.accuracy_score(trainResLRSVD,y_train) * 100
+print("Training Accuracy of the Logistic Regression Model:", format(trainResLRSVD_acc) )
+print( "The Confustion Matrix:")
+print(mt.confusion_matrix(trainResLRSVD,y_train))
+
+
+# ######                    Testing Accuracy
+
+# In[24]:
+
+
+testResLRSVD = LRSVD.predict(X_test)
+testResLRSVD_acc = mt.accuracy_score(testResLRSVD,y_test) * 100
+print("Testing Accuracy of the Logistic Regression Model:", testResLRSVD_acc )
+print( "The Confustion Matrix:")
+print(mt.confusion_matrix(testResLRSVD,y_test))
+
+
+# # 3. Reporting the results
+
+# In[25]:
+
+
+
+train = [trainResGNB_acc,trainResLR_acc, trainResGNBSVD_acc, trainResLRSVD_acc]
+test = [testResGNB_acc,testResLR_acc, testResGNBSVD_acc, testResLRSVD_acc]
+ind = (1,2,3,4)
+
+plt.bar(ind, train, width=0.8, 
+        color='b', label='Training Accuracy')
+plt.bar(ind, test, width=0.7, 
+        color='r', label='Testing Accuracy')
+plt.legend()
+plt.xticks(ind, ('GNB_Intensity', 'LR_Intensity', 'GNB_SVD', 'LR_SVD'))
+plt.ylabel('Accuracy Percentage')
+plt.title('Accuracy Scores')
+plt.yticks(np.arange(0, 100, 10))
+plt.show()
+
